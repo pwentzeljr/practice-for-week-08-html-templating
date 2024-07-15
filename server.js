@@ -38,6 +38,17 @@ function getContentType(fileName) {
   }
 }
 
+function handle_error(req, res, msg='Page Not Found') {
+  const htmlPage = fs.readFileSync("./views/error.html", 'utf-8');
+  const resBody = htmlPage
+    .replace(/#{message}/g, msg);
+
+  res.statusCode = 404;
+  res.setHeader("Content-Type", "text/html");
+  res.write(resBody);
+  return res.end();
+}
+
 const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
   if (req.method === "GET" && req.url.startsWith('/assets')) {
@@ -89,11 +100,29 @@ const server = http.createServer((req, res) => {
     // Phase 1: GET /dogs
     if (req.method === 'GET' && req.url === '/dogs') {
       // Your code here
+      const htmlPage = fs.readFileSync('./views/dogs.html', 'utf-8');
+
+      let dogsList = '';
+      dogs.forEach(dog => dogsList += `<li>${dog.name}</li>`)
+
+      const resBody = htmlPage.replace(/#{dogsList}/g, dogsList);
+      console.log(resBody);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/html')
+      res.write(resBody);
+      return res.end();
     }
 
     // Phase 2: GET /dogs/new
     if (req.method === 'GET' && req.url === '/dogs/new') {
       // Your code here
+      const htmlPage = fs.readFileSync("./views/create-dog.html", 'utf-8');
+      const resBody = htmlPage;
+
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html");
+      res.write(resBody);
+      return res.end();
     }
 
     // Phase 3: GET /dogs/:dogId
@@ -103,12 +132,33 @@ const server = http.createServer((req, res) => {
         const dogId = urlParts[2];
         const dog = dogs.find(dog => dog.dogId === Number(dogId));
         // Your code here
+        if (!dog) return handle_error(req, res, 'Dog Not Found');
+
+        const htmlPage = fs.readFileSync("./views/dog-details.html", 'utf-8');
+        const resBody = htmlPage
+          .replace(/#{name}/g, dog.name)
+          .replace(/#{age}/g, dog.age);
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.write(resBody);
+        return res.end();
       }
     }
 
     // Phase 4: POST /dogs
     if (req.method === 'POST' && req.url === '/dogs') {
       // Your code here
+      const newDog = {
+        dogId: getNewDogId(),
+        name: req.body.name,
+        age: req.body.age
+      };
+      dogs.push(newDog);
+
+      res.statusCode = 302;
+      res.setHeader('Location', `/dogs/${newDog.dogId}`);
+      return res.end();
     }
 
     // Phase 5: GET /dogs/:dogId/edit
@@ -118,6 +168,18 @@ const server = http.createServer((req, res) => {
         const dogId = urlParts[2];
         const dog = dogs.find(dog => dog.dogId === Number(dogId));
         // Your code here
+        if (!dog) return handle_error(req, res, 'Dog Not Found');
+
+        const htmlPage = fs.readFileSync("./views/edit-dog.html", 'utf-8');
+        const resBody = htmlPage
+          .replace(/#{name}/g, dog.name)
+          .replace(/#{age}/g, dog.age)
+          .replace(/#{dogId}/g, dog.dogId);
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.write(resBody);
+        return res.end();
       }
     }
 
@@ -128,18 +190,19 @@ const server = http.createServer((req, res) => {
         const dogId = urlParts[2];
         const dog = dogs.find(dog => dog.dogId === Number(dogId));
         // Your code here
+        if (!dog) return handle_error(req, res, 'Dog Not Found');
+
+        dog.name = req.body.name;
+        dog.age = req.body.age;
+
+        res.statusCode = 302;
+        res.setHeader('Location', `/dogs/${dog.dogId}`);
+        return res.end();
       }
     }
 
     // No matching endpoint
-    const htmlPage = fs.readFileSync("./views/error.html", 'utf-8');
-    const resBody = htmlPage
-      .replace(/#{message}/g, 'Page Not Found');
-
-    res.statusCode = 404;
-    res.setHeader("Content-Type", "text/html");
-    res.write(resBody);
-    return res.end();
+    return handle_error(req, res);
   });
 });
 
